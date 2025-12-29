@@ -607,7 +607,7 @@ function IncharillaUI:addToggle(tabName, toggleText, defaultValue, callback)
         buttonData:setStatus(newValue, newValue and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50))
         buttonData:setText(newValue and toggleText .. " ✓" or toggleText)
         if callback then
-            callback(newValue)
+            task.spawn(callback, newValue)
         end
     end)
     
