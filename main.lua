@@ -490,8 +490,7 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
     end
     
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -10, 0, 48)
-    button.Position = UDim2.new(0, 0, 0, 0)
+    button.Size = UDim2.new(1, -20, 0, 48)
     button.BackgroundColor3 = Themes[self.currentTheme].button
     button.BackgroundTransparency = 0.1
     button.BorderSizePixel = 0
