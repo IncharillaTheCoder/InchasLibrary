@@ -14,7 +14,11 @@ local Themes = {
         accent = Color3.fromRGB(0, 170, 255),
         text = Color3.fromRGB(255, 255, 255),
         button = Color3.fromRGB(35, 35, 50),
-        stroke = Color3.fromRGB(100, 100, 150)
+        stroke = Color3.fromRGB(100, 100, 150),
+        enabledColor = Color3.fromRGB(0, 255, 100),
+        disabledColor = Color3.fromRGB(255, 60, 60),
+        warningColor = Color3.fromRGB(255, 180, 0),
+        infoColor = Color3.fromRGB(0, 180, 255)
     },
     dark = {
         background = Color3.fromRGB(10, 10, 15),
@@ -23,36 +27,78 @@ local Themes = {
         accent = Color3.fromRGB(0, 220, 100),
         text = Color3.fromRGB(240, 240, 240),
         button = Color3.fromRGB(25, 25, 40),
-        stroke = Color3.fromRGB(80, 80, 120)
-    },
-    purple = {
-        background = Color3.fromRGB(25, 15, 35),
-        titleBar = Color3.fromRGB(35, 20, 45),
-        tab = Color3.fromRGB(40, 25, 55),
-        accent = Color3.fromRGB(180, 80, 255),
-        text = Color3.fromRGB(255, 255, 255),
-        button = Color3.fromRGB(45, 30, 60),
-        stroke = Color3.fromRGB(120, 80, 160)
-    },
-    red = {
-        background = Color3.fromRGB(28, 10, 10),
-        titleBar = Color3.fromRGB(40, 15, 15),
-        tab = Color3.fromRGB(50, 20, 20),
-        accent = Color3.fromRGB(255, 60, 60),
-        text = Color3.fromRGB(255, 255, 255),
-        button = Color3.fromRGB(45, 20, 20),
-        stroke = Color3.fromRGB(150, 80, 80)
-    },
-    ocean = {
-        background = Color3.fromRGB(10, 20, 35),
-        titleBar = Color3.fromRGB(15, 30, 50),
-        tab = Color3.fromRGB(20, 40, 60),
-        accent = Color3.fromRGB(0, 180, 255),
-        text = Color3.fromRGB(220, 240, 255),
-        button = Color3.fromRGB(25, 45, 65),
-        stroke = Color3.fromRGB(50, 100, 150)
+        stroke = Color3.fromRGB(80, 80, 120),
+        enabledColor = Color3.fromRGB(0, 255, 100),
+        disabledColor = Color3.fromRGB(255, 60, 60),
+        warningColor = Color3.fromRGB(255, 180, 0),
+        infoColor = Color3.fromRGB(0, 180, 255)
     }
 }
+
+
+local KeybindManager = {
+    keybinds = {},
+    connections = {}
+}
+
+function KeybindManager:registerKeybind(name, keyCode, callback, allowMultiple)
+    self.keybinds[name] = {
+        keyCode = keyCode,
+        callback = callback,
+        enabled = true,
+        allowMultiple = allowMultiple or false
+    }
+end
+
+function KeybindManager:unregisterKeybind(name)
+    self.keybinds[name] = nil
+end
+
+function KeybindManager:setKeybind(name, keyCode)
+    if self.keybinds[name] then
+        self.keybinds[name].keyCode = keyCode
+    end
+end
+
+function KeybindManager:toggleKeybind(name, enabled)
+    if self.keybinds[name] then
+        self.keybinds[name].enabled = enabled
+    end
+end
+
+function KeybindManager:startListening()
+    if self.connections.input then
+        self.connections.input:Disconnect()
+    end
+    
+    self.connections.input = UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        
+        for name, keybind in pairs(self.keybinds) do
+            if keybind.enabled and input.KeyCode == keybind.keyCode then
+                if not keybind.allowMultiple then
+                    local now = tick()
+                    keybind.lastPressed = keybind.lastPressed or 0
+                    
+                    if now - keybind.lastPressed > 0.1 then
+                        keybind.lastPressed = now
+                        task.spawn(keybind.callback)
+                    end
+                else
+                    task.spawn(keybind.callback)
+                end
+                break
+            end
+        end
+    end)
+end
+
+function KeybindManager:stopListening()
+    if self.connections.input then
+        self.connections.input:Disconnect()
+        self.connections.input = nil
+    end
+end
 
 function IncharillaUI.new(config)
     local self = setmetatable({}, IncharillaUI)
@@ -73,6 +119,7 @@ function IncharillaUI.new(config)
     self.toggles = {}
     self.dropdowns = {}
     self.keybinds = {}
+    self.keybindManager = KeybindManager
     self.currentTheme = config.theme or "default"
     
     self.config = {
@@ -94,6 +141,7 @@ function IncharillaUI.new(config)
     }
     
     self:init()
+    self.keybindManager:startListening()
     return self
 end
 
@@ -351,10 +399,8 @@ end
 function IncharillaUI:setupToggleKey()
     if not self.config.toggleKey then return end
     
-    self.connections.toggleKey = UserInputService.InputBegan:Connect(function(input, processed)
-        if not processed and input.KeyCode == self.config.toggleKey then
-            self:setVisible(not self.gui.Enabled)
-        end
+    self.keybindManager:registerKeybind("ToggleUI", self.config.toggleKey, function()
+        self:setVisible(not self.gui.Enabled)
     end)
 end
 
@@ -482,6 +528,7 @@ function IncharillaUI:addTab(tabName, displayName)
     return tabFrame
 end
 
+
 function IncharillaUI:addButton(tabName, buttonText, callback)
     local tabFrame = self.tabs[tabName]
     if not tabFrame then 
@@ -527,16 +574,26 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = button
     
+    
     local statusIndicator = Instance.new("Frame")
-    statusIndicator.Size = UDim2.fromOffset(8, 8)
-    statusIndicator.Position = UDim2.new(1, -20, 0.5, -4)
+    statusIndicator.Size = UDim2.fromOffset(24, 24)
+    statusIndicator.Position = UDim2.new(1, -30, 0.5, -12)
     statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
     statusIndicator.BorderSizePixel = 0
-    statusIndicator.Visible = false
+    statusIndicator.Visible = true
     
     local statusCorner = Instance.new("UICorner")
     statusCorner.CornerRadius = UDim.new(1, 0)
     statusCorner.Parent = statusIndicator
+    
+    local statusIcon = Instance.new("TextLabel")
+    statusIcon.Size = UDim2.new(1, 0, 1, 0)
+    statusIcon.BackgroundTransparency = 1
+    statusIcon.Text = "✗"
+    statusIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusIcon.Font = Enum.Font.GothamBold
+    statusIcon.TextSize = 14
+    statusIcon.Parent = statusIndicator
     statusIndicator.Parent = button
     
     button.MouseEnter:Connect(function()
@@ -578,19 +635,32 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
         button = button,
         label = label,
         status = statusIndicator,
+        statusIcon = statusIcon,
+        toggleState = false,
         setText = function(self, text)
             label.Text = text
         end,
-        setStatus = function(self, visible, color)
-            statusIndicator.Visible = visible
-            if visible and color then
-                statusIndicator.BackgroundColor3 = color
+        setStatus = function(self, enabled, color)
+            if enabled then
+                statusIndicator.BackgroundColor3 = color or Themes[self.currentTheme].enabledColor
+                statusIcon.Text = "✓"
+            else
+                statusIndicator.BackgroundColor3 = color or Themes[self.currentTheme].disabledColor
+                statusIcon.Text = "✗"
             end
+            self.toggleState = enabled
+        end,
+        toggleStatus = function(self, color)
+            self.toggleState = not self.toggleState
+            self:setStatus(self.toggleState, color)
+            return self.toggleState
         end,
         setEnabled = function(self, enabled)
             button.Active = enabled
             button.TextTransparency = enabled and 1 or 0.5
             label.TextTransparency = enabled and 0 or 0.5
+            statusIndicator.BackgroundTransparency = enabled and 0 or 0.5
+            statusIcon.TextTransparency = enabled and 0 or 0.5
         end
     }
     
@@ -598,11 +668,10 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
     return buttonData
 end
 
+
 function IncharillaUI:addToggle(tabName, toggleText, defaultValue, callback)
     local buttonData = self:addButton(tabName, toggleText, function()
-        local newValue = not buttonData.toggleState
-        buttonData.toggleState = newValue
-        buttonData:setStatus(newValue, newValue and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50))
+        local newValue = buttonData:toggleStatus()
         buttonData:setText(newValue and toggleText .. " ✓" or toggleText)
         if callback then
             task.spawn(callback, newValue)
@@ -611,8 +680,51 @@ function IncharillaUI:addToggle(tabName, toggleText, defaultValue, callback)
     
     if buttonData then
         buttonData.toggleState = defaultValue or false
-        buttonData:setStatus(buttonData.toggleState, buttonData.toggleState and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50))
+        buttonData:setStatus(buttonData.toggleState, buttonData.toggleState and Themes[self.currentTheme].enabledColor or Themes[self.currentTheme].disabledColor)
         buttonData:setText(buttonData.toggleState and toggleText .. " ✓" or toggleText)
+    end
+    
+    return buttonData
+end
+
+
+function IncharillaUI:addKeybind(tabName, keybindText, defaultKey, callback)
+    local buttonData = self:addButton(tabName, keybindText .. ": " .. (defaultKey and defaultKey.Name or "NONE"), function()
+        buttonData.listening = true
+        buttonData:setText("Press a key...")
+        
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                buttonData.currentKey = input.KeyCode
+                buttonData:setText(keybindText .. ": " .. input.KeyCode.Name)
+                buttonData.listening = false
+                connection:Disconnect()
+                
+                
+                self.keybindManager:registerKeybind(keybindText, input.KeyCode, function()
+                    if callback then
+                        callback()
+                    end
+                end)
+                
+                if callback then
+                    callback(input.KeyCode)
+                end
+            end
+        end)
+    end)
+    
+    if buttonData and defaultKey then
+        buttonData.currentKey = defaultKey
+        buttonData.listening = false
+        
+        
+        self.keybindManager:registerKeybind(keybindText, defaultKey, function()
+            if callback then
+                callback()
+            end
+        end)
     end
     
     return buttonData
@@ -890,34 +1002,6 @@ function IncharillaUI:addDropdown(tabName, dropdownText, options, defaultValue, 
     return dropdownData
 end
 
-function IncharillaUI:addKeybind(tabName, keybindText, defaultKey, callback)
-    local buttonData = self:addButton(tabName, keybindText .. ": " .. (defaultKey and defaultKey.Name or "NONE"), function()
-        buttonData.listening = true
-        buttonData:setText(keybindText .. ": PRESS KEY...")
-        
-        local connection
-        connection = UserInputService.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Keyboard then
-                buttonData.currentKey = input.KeyCode
-                buttonData:setText(keybindText .. ": " .. input.KeyCode.Name)
-                buttonData.listening = false
-                connection:Disconnect()
-                
-                if callback then
-                    callback(input.KeyCode)
-                end
-            end
-        end)
-    end)
-    
-    if buttonData then
-        buttonData.currentKey = defaultKey
-        buttonData.listening = false
-    end
-    
-    return buttonData
-end
-
 function IncharillaUI:addSeparator(tabName, height)
     local tabFrame = self.tabs[tabName]
     if not tabFrame then return nil end
@@ -1025,6 +1109,7 @@ function IncharillaUI:flashTitleBar(color, duration)
 end
 
 function IncharillaUI:destroy()
+    self.keybindManager:stopListening()
     for _, conn in pairs(self.connections) do
         pcall(function() conn:Disconnect() end)
     end
