@@ -400,9 +400,11 @@ end
 function IncharillaUI:addTab(tabName, displayName)
     displayName = displayName or tabName
     
+    local isFirstTab = next(self.tabs) == nil
+    
     local tabBtn = Instance.new("TextButton")
     tabBtn.Size = UDim2.new(0.25, 0, 1, 0)
-    tabBtn.BackgroundColor3 = self.tabs[1] and Color3.fromRGB(40, 40, 60) or Color3.fromRGB(50, 50, 80)
+    tabBtn.BackgroundColor3 = isFirstTab and Color3.fromRGB(50, 50, 80) or Color3.fromRGB(40, 40, 60)
     tabBtn.BorderSizePixel = 0
     tabBtn.Text = displayName
     tabBtn.TextColor3 = Color3.fromRGB(220, 220, 240)
@@ -419,7 +421,7 @@ function IncharillaUI:addTab(tabName, displayName)
     tabFrame.ScrollBarThickness = 4
     tabFrame.ScrollBarImageColor3 = Themes[self.currentTheme].stroke
     tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    tabFrame.Visible = false
+    tabFrame.Visible = isFirstTab
     tabFrame.Parent = self.contentFrame
     
     local uiListLayout = Instance.new("UIListLayout")
@@ -432,8 +434,7 @@ function IncharillaUI:addTab(tabName, displayName)
         tabFrame.CanvasSize = UDim2.new(0, 0, 0, uiListLayout.AbsoluteContentSize.Y + 10)
     end)
     
-    if not self.tabs[1] then
-        tabFrame.Visible = true
+    if isFirstTab then
         self.activeTab = tabName
     end
     
@@ -456,14 +457,13 @@ function IncharillaUI:addTab(tabName, displayName)
     tabBtn.MouseButton1Click:Connect(function()
         for name, frame in pairs(self.tabs) do
             frame.Visible = false
-            if name ~= tabName then
-                for _, btn in pairs(self.tabContainer:GetChildren()) do
-                    if btn:IsA("TextButton") and btn.Text == (self.tabNames and self.tabNames[name] or name) then
-                        TweenService:Create(btn, TweenInfo.new(0.2), {
-                            BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-                        }):Play()
-                    end
-                end
+        end
+        
+        for _, btn in pairs(self.tabContainer:GetChildren()) do
+            if btn:IsA("TextButton") then
+                TweenService:Create(btn, TweenInfo.new(0.2), {
+                    BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                }):Play()
             end
         end
         
