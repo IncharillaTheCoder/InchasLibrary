@@ -496,16 +496,16 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
     button.BorderSizePixel = 0
     button.Text = ""
     button.AutoButtonColor = false
+    button.Parent = tabFrame  -- Add to parent BEFORE setting LayoutOrder
     
+    -- Count only button-like children for LayoutOrder
     local buttonCount = 0
     for _, child in ipairs(tabFrame:GetChildren()) do
-        if child:IsA("TextButton") or child:IsA("Frame") then
+        if child:IsA("TextButton") or (child:IsA("Frame") and child.BackgroundTransparency < 1) then
             buttonCount = buttonCount + 1
         end
     end
     button.LayoutOrder = buttonCount
-    
-    button.Parent = tabFrame
     
     local buttonCorner = Instance.new("UICorner")
     buttonCorner.CornerRadius = UDim.new(0, 8)
