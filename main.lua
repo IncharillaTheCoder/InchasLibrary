@@ -484,16 +484,28 @@ end
 
 function IncharillaUI:addButton(tabName, buttonText, callback)
     local tabFrame = self.tabs[tabName]
-    if not tabFrame then return nil end
+    if not tabFrame then 
+        warn("Tab not found:", tabName)
+        return nil 
+    end
     
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -10, 0, 48)
+    button.Size = UDim2.new(0.95, 0, 0, 48)
+    button.Position = UDim2.new(0.025, 0, 0, 0)
     button.BackgroundColor3 = Themes[self.currentTheme].button
     button.BackgroundTransparency = 0.1
     button.BorderSizePixel = 0
     button.Text = ""
     button.AutoButtonColor = false
-    button.LayoutOrder = #tabFrame:GetChildren()
+    
+    local buttonCount = 0
+    for _, child in ipairs(tabFrame:GetChildren()) do
+        if child:IsA("TextButton") or child:IsA("Frame") then
+            buttonCount = buttonCount + 1
+        end
+    end
+    button.LayoutOrder = buttonCount
+    
     button.Parent = tabFrame
     
     local buttonCorner = Instance.new("UICorner")
@@ -560,7 +572,7 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
             BackgroundColor3 = Themes[self.currentTheme].button:Lerp(Color3.new(1, 1, 1), 0.1)
         }):Play()
         if callback then
-            callback()
+            task.spawn(callback)
         end
     end)
     
@@ -568,16 +580,16 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
         button = button,
         label = label,
         status = statusIndicator,
-        setText = function(text)
+        setText = function(self, text)
             label.Text = text
         end,
-        setStatus = function(visible, color)
+        setStatus = function(self, visible, color)
             statusIndicator.Visible = visible
             if visible and color then
                 statusIndicator.BackgroundColor3 = color
             end
         end,
-        setEnabled = function(enabled)
+        setEnabled = function(self, enabled)
             button.Active = enabled
             button.TextTransparency = enabled and 1 or 0.5
             label.TextTransparency = enabled and 0 or 0.5
