@@ -490,15 +490,14 @@ function IncharillaUI:addButton(tabName, buttonText, callback)
     end
     
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -20, 0, 48)
+    button.Size = UDim2.new(1, -0, 0, 48)
     button.BackgroundColor3 = Themes[self.currentTheme].button
     button.BackgroundTransparency = 0.1
     button.BorderSizePixel = 0
     button.Text = ""
     button.AutoButtonColor = false
-    button.Parent = tabFrame  -- Add to parent BEFORE setting LayoutOrder
-    
-    -- Count only button-like children for LayoutOrder
+    button.Parent = tabFrame
+
     local buttonCount = 0
     for _, child in ipairs(tabFrame:GetChildren()) do
         if child:IsA("TextButton") or (child:IsA("Frame") and child.BackgroundTransparency < 1) then
